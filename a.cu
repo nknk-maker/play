@@ -1,12 +1,10 @@
-#include <cstdio>
-#include <cstdint>
 #include <vector>
-#include <chrono>
+#include <iostream>
 #include <assert.h>
 #include <convolve.cu>
 #include <cuda_runtime.h>
 using namespace std;
-#define NUMBER 1<<28
+#define NUMBER 1<<30
 
 __global__ void kval(int* a, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;

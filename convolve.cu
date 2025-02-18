@@ -1,9 +1,5 @@
 #pragma once
 #include <thrust/complex.h>
-#include <iostream>
-#include <vector>
-#include <math.h>
-#include <cstdint>
 #include <cuda_runtime.h>
 
 using namespace std;
