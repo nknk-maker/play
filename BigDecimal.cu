@@ -4,14 +4,15 @@
 #include <convolve.cu>
 #include <cuda_runtime.h>
 using namespace std;
-#define NUMBER 1<<30
+#define NUMBER 1<<5
+
 
 __global__ void kval(int* a, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
     int p = a[i] / 10;
     if (a[i] < 0) p--;
-    a[i+1] += p;
+    if (i+1 < n) a[i+1] += p;
     a[i] -= p * 10;
 }
 
@@ -47,27 +48,34 @@ __global__ void kshift(int* a, int* b, int d, int n) {
     else b[i] = 0;
 }
 
+__global__ void kcp(int *a, int *b, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    a[i] = b[i];
+}
+
 struct BigInt {
-    int siz, blockSize, numBlocks;
+    int siz, p, blockSize, numBlocks;
     int *u;
     BigInt(int n) : siz(n) {
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemset(u, 0, sizeof(int)*siz);
         blockSize = 1024;
         numBlocks = (siz + blockSize - 1) / blockSize;
-    }
-    void set(int i, int a) {
-        kset<<<1, 1>>>(u, i, a, siz);
+        p = 0;
     }
     const BigInt val() {
         kval<<<numBlocks, blockSize>>>(u, siz);
         return *this;
     }
+    void set(int i, int a) {
+        kset<<<1, 1>>>(u, i, a, siz);
+    }
     const BigInt shift(int k) {
         int *y;
         cudaMalloc(&y, sizeof(int)*siz);
         kshift<<<numBlocks, blockSize>>>(u, y, k, siz);
-        return *this;
+        return *y;
     }
     int comp(const BigInt& b) {
         int *p, *q;
@@ -76,6 +84,11 @@ struct BigInt {
         *p = -1; *q = 0;
         kcomp<<<numBlocks, blockSize>>>(u, b.u, p, q);
         return *q;
+    }
+    BigInt operator=(const BigInt& b) {
+        siz = b.siz;
+        kcp<<<numBlocks, blockSize>>>(u, b.u, min(siz, b.siz));
+        return *this;
     }
     bool operator<(const BigInt& b) {
         return comp(b) == -1;
@@ -95,19 +108,29 @@ struct BigInt {
     bool operator>=(const BigInt& b) {
         return comp(b) != -1;
     }
-    const BigInt operator+(const BigInt b) { return BigInt(*this) += b; }
-    const BigInt operator-(const BigInt b) { return BigInt(*this) -= b; }
-    const BigInt operator*(const BigInt b) { return BigInt(*this) *= b; }
-    const BigInt operator/(const BigInt b) { return BigInt(*this) /= b; }
+    const BigInt operator+(const BigInt& b) const { 
+        BigInt ret = *this;
+        return ret += b;
+    }
+    const BigInt operator-(const BigInt& b) const { 
+        BigInt ret = *this;
+        return ret -= b; 
+    }
+    const BigInt operator*(const BigInt& b) const { 
+        BigInt ret = *this;
+        return ret *= b; 
+    }
+    const BigInt operator/(const BigInt& b) const { 
+        BigInt ret = *this;
+        return ret /= b; 
+    }
     const BigInt &operator+=(const BigInt& b) {
-        assert(siz == b.siz);
-        kadd<<<numBlocks, blockSize>>>(u, b.u, siz);
+        kadd<<<numBlocks, blockSize>>>(u, b.u, min(siz, b.siz));
         val();
         return (*this);
     }
     const BigInt &operator-=(const BigInt& b) {
-        assert(siz == b.siz);
-        ksub<<<numBlocks, blockSize>>>(u, b.u, siz);
+        ksub<<<numBlocks, blockSize>>>(u, b.u, min(siz, b.siz));
         val();    
         return (*this);
     }
@@ -122,6 +145,7 @@ struct BigInt {
         BigInt x(siz), _2(siz);
         x.set(0, 1); // 0.1
         for (int k = 1; k < siz/2; k *= 2) {
+            x.siz = _2.siz = k+1;
             _2.set(k, 2);
             x = x * (_2 - b * x);
             _2.set(k, 0);
@@ -141,13 +165,16 @@ ostream& operator<<(ostream& os, const BigInt& b) {
     return os;
 }
 
-
 int main() {
     cin.tie(nullptr);
     ios_base::sync_with_stdio(false);
     BigInt a(NUMBER);
     BigInt b(NUMBER);
-    a.set(1, 2);
-    b.set(2, 1);
-    cout << a*b << endl;
+    a.set(0, 9);
+    a.set(1, 9);
+    b.set(0, 9);
+    b.set(1, 9);
+    a *= b;
+    cout << a << endl;
 }
+

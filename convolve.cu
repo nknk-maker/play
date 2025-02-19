@@ -3,7 +3,7 @@
 #include <cuda_runtime.h>
 
 using namespace std;
-using COMP = thrust::complex<float>;
+using COMP = thrust::complex<double>;
 
 __global__ void cfft(COMP* v, int n, int siz, bool inv) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -24,6 +24,7 @@ __global__ void cfft(COMP* v, int n, int siz, bool inv) {
 
 __global__ void kbit_rev(COMP* v, int m, int n) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= n) return;
     int j = 0, x = id;
     for (int i = 0; i < m; i++) j = (j << 1) | (x & 1), x >>= 1;
     if (j > id) {
@@ -59,21 +60,24 @@ __global__ void itor(int* v, COMP* u, int n) {
 
 void fft(COMP* v, int n, bool inv=false) {
     int m = 0; while ((1<<m)<n) m++;
-    int blockSize = 1024;
+    int blockSize = 32;
     int numBlocks = (n/2 + blockSize - 1) / blockSize;
-    kbit_rev<<<numBlocks, blockSize>>>(v, m, n);
+    kbit_rev<<<numBlocks*2, blockSize>>>(v, m, n); // bit反転はn個のコアで行う必要がある
     for (int siz = 1; (1<<siz) <= n; siz++) cfft<<<numBlocks, blockSize>>>(v, n, siz, inv);
     return;
 }
 
 int* convolve(int* f_, int* g_, int siz) {
     int n = siz*2;
-    int blockSize = 1024;
+    int blockSize = 32;
     int numBlocks = (n + blockSize - 1) / blockSize;
 
     COMP *f, *g;
     cudaMalloc(&f, sizeof(COMP)*n);
     cudaMalloc(&g, sizeof(COMP)*n);
+    // 配列全体をゼロ初期化
+    cudaMemset(f, 0, sizeof(COMP) * n);
+    cudaMemset(g, 0, sizeof(COMP) * n);
     itor<<<numBlocks, blockSize>>>(f_, f, siz);
     itor<<<numBlocks, blockSize>>>(g_, g, siz);
 
@@ -89,6 +93,9 @@ int* convolve(int* f_, int* g_, int siz) {
     rtoi<<<numBlocks, blockSize>>>(f, r, n);
     cudaFree(f); cudaFree(g);
 
-    cudaFree(r+siz);
+    int* r_host = new int[n];
+    cudaMemcpy(r_host, r, sizeof(int) * n, cudaMemcpyDeviceToHost);
+
+    // cudaFree(r+siz);
     return r;
 }
