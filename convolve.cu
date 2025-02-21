@@ -93,9 +93,5 @@ int* convolve(int* f_, int* g_, int siz) {
     rtoi<<<numBlocks, blockSize>>>(f, r, n);
     cudaFree(f); cudaFree(g);
 
-    int* r_host = new int[n];
-    cudaMemcpy(r_host, r, sizeof(int) * n, cudaMemcpyDeviceToHost);
-
-    // cudaFree(r+siz);
     return r;
 }

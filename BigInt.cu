@@ -4,7 +4,7 @@
 #include <convolve.cu>
 #include <cuda_runtime.h>
 using namespace std;
-#define NUMBER 1<<1
+#define NUMBER 1<<3
 
 
 __global__ void kval(int* a, int n) {
@@ -141,16 +141,16 @@ struct BigInt {
     }
     const BigInt &operator/=(BigInt b) {
         assert(siz == b.siz);
-        BigInt x(siz), _2(siz);
+        BigInt x(siz), _2(siz), a = *this;
         x.set(0, 1); // 0.1
         for (int k = 1; k < siz/2; k *= 2) {
-            x.siz = _2.siz = k+1;
             _2.set(k, 2);
             x = x * (_2 - b * x);
             _2.set(k, 0);
         }
         *this = (*this) * x;
         shift(siz/2);
+        // if (a >= *this * b) b++;
         return *this;
     }
 };
@@ -173,7 +173,7 @@ int main() {
     a.set(1, 1);
     b.set(0, 2);
     // b.set(1, 9);
-    a *= b
+    a /= b;
     cout << a << endl;
 }
 
