@@ -51,24 +51,24 @@ __global__ void kcp(int *a, int *b, int n) {
 struct BigDecimal {
     int siz, blockSize, numBlocks;
     int *u;
-    __host__ __device__ BigDecimal(int n) : siz(n) {
+    BigDecimal(int n) : siz(n) {
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemset(u, 0, sizeof(int)*siz);
         blockSize = 1024;
         numBlocks = (siz + blockSize - 1) / blockSize;
     }
-    __host__ __device__ BigDecimal(const BigDecimal& b) : siz(b.siz), blockSize(b.blockSize), numBlocks(b.numBlocks) {
+    BigDecimal(const BigDecimal& b) : siz(b.siz), blockSize(b.blockSize), numBlocks(b.numBlocks) {
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemcpy(u, b.u, sizeof(int)*siz, cudaMemcpyDeviceToDevice);
     }
-    __host__ __device__ const BigDecimal val() {
+    const BigDecimal val() {
         kval<<<numBlocks, blockSize>>>(u, siz);
         return *this;
     }
-    __host__ __device__ void set(int i, int a) {
+    void set(int i, int a) {
         kset<<<1, 1>>>(u, i, a, siz);
     }
-    __host__ __device__ int comp(const BigDecimal& b) {
+    int comp(const BigDecimal& b) {
         int *p, *q;
         cudaMalloc(&p, sizeof(int));
         cudaMalloc(&q, sizeof(int));
@@ -76,11 +76,11 @@ struct BigDecimal {
         kcomp<<<numBlocks, blockSize>>>(u, b.u, p, q);
         return *q;
     }
-    __host__ __device__ const BigDecimal operator=(const BigDecimal& b) {
+    const BigDecimal operator=(const BigDecimal& b) {
         kcp<<<numBlocks, blockSize>>>(u, b.u, siz);
         return *this;
     }
-    __host__ __device__ const BigDecimal operator=(const int& b) {
+    const BigDecimal operator=(const int& b) {
         int p = 0, x = b;
         cudaMemset(u, 0, sizeof(int)*siz);
         while (x > 0) {
@@ -88,51 +88,50 @@ struct BigDecimal {
             x /= 10;
             p++;
         }
-        return *this;
     }
-    __host__ __device__ const BigDecimal operator+(const int& b) const {
+    const BigDecimal operator+(const int& b) const {
         BigDecimal rhs = b;
         return *this + rhs;
     }
-    __host__ __device__ const BigDecimal operator-(const int& b) const {
+    const BigDecimal operator-(const int& b) const {
         BigDecimal rhs = b;
         return *this - rhs;
     }
-    __host__ __device__ const BigDecimal operator*(const int& b) const {
+    const BigDecimal operator*(const int& b) const {
         BigDecimal rhs = b;
         return *this * b;
     }
-    __host__ __device__ const BigDecimal operator/(const int& b) const {
+    const BigDecimal operator/(const int& b) const {
         BigDecimal rhs = b;
         return *this / rhs;
     }
-    __host__ __device__ const BigDecimal operator+(const BigDecimal& b) const { 
+    const BigDecimal operator+(const BigDecimal& b) const { 
         BigDecimal ret = *this;
         return ret += b;
     }
-    __host__ __device__ const BigDecimal operator-(const BigDecimal& b) const { 
+    const BigDecimal operator-(const BigDecimal& b) const { 
         BigDecimal ret = *this;
         return ret -= b; 
     }
-    __host__ __device__ const BigDecimal operator*(const BigDecimal& b) const { 
+    const BigDecimal operator*(const BigDecimal& b) const { 
         BigDecimal ret = (*this);
         return ret *= b; 
     }
-    __host__ __device__ const BigDecimal operator/(const BigDecimal& b) const { 
+    const BigDecimal operator/(const BigDecimal& b) const { 
         BigDecimal ret = *this;
         return ret /= b; 
     }
-    __host__ __device__ const BigDecimal &operator+=(const BigDecimal& b) {
+    const BigDecimal &operator+=(const BigDecimal& b) {
         kadd<<<numBlocks, blockSize>>>(u, b.u, min(siz, b.siz));
         val();
         return (*this);
     }
-    __host__ __device__ const BigDecimal &operator-=(const BigDecimal& b) {
+    const BigDecimal &operator-=(const BigDecimal& b) {
         ksub<<<numBlocks, blockSize>>>(u, b.u, min(siz, b.siz));
         val();    
         return (*this);
     }
-    __host__ __device__ const BigDecimal &operator*=(const BigDecimal& b) {
+    const BigDecimal &operator*=(const BigDecimal& b) {
         assert(siz == b.siz);
         int* r = convolve(u, b.u, siz);
         cudaMemcpy(u, r+siz/2, sizeof(int)*siz, cudaMemcpyDeviceToDevice);
@@ -140,12 +139,12 @@ struct BigDecimal {
         val();
         return *this;
     }
-    __host__ __device__ const BigDecimal &operator/=(BigDecimal b) {
+    const BigDecimal &operator/=(BigDecimal b) {
         assert(siz == b.siz);
         BigDecimal x(siz);
         // 初期値を決める
         int n = siz-1;
-        int *v = new int[siz];
+        int v[siz];
         cudaMemcpy(v, b.u, sizeof(int)*siz, cudaMemcpyDeviceToHost);
         while (v[n] == 0) n--;
         n = siz - n - 1;

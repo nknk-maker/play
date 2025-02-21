@@ -12,7 +12,7 @@ BigDecimal invrt(BigDecimal a) {
     x.set(x.siz/2+1, 1); // 0.01
     _1.set(_1.siz/2-1, 1); // 1
     _5.set(_5.siz/2, 5); // 0.5 = 1/2
-    for (int k = 1; k < x.siz/2; k >>= 1) {
+    for (int k = 1; k < x.siz/2; k <<= 1) {
         x = x + _5 * x * (_1 - a * x * x);
     }
     return x;
@@ -84,7 +84,9 @@ __global__ void kz(BigDecimal *z, int n) {
 
 
 int main() {
-    int n = 1<<10;
+    BigDecimal p = 10;
+    cout << p << endl;
+    int n = 1<<8;
     BigDecimal *x, *y, *z;
     cudaMalloc(&x, sizeof(BigDecimal)*n);
     cudaMalloc(&y, sizeof(BigDecimal)*n);
@@ -95,10 +97,20 @@ int main() {
     ky<<<numBlocks, blockSize>>>(y, n);
     kz<<<numBlocks, blockSize>>>(z, n);
     binary_split(x, y, z, n);
-    BigDecimal X(NUMBER), Y(NUMBER);
+    BigDecimal X, Y;
+    cout << X.siz << endl;
     cudaMemcpy(&X, x, sizeof(BigDecimal), cudaMemcpyDeviceToHost);
     cudaMemcpy(&Y, y, sizeof(BigDecimal), cudaMemcpyDeviceToHost);
-    cout << X * 4270934400 * invrt(10005) / Y << endl;
+    BigDecimal a;
+    a.set(a.siz/2+2, 4);
+    a.set(a.siz/2+3, 4);
+    a.set(a.siz/2+4, 3);
+    a.set(a.siz/2+5, 9);
+    a.set(a.siz/2+7, 7);
+    a.set(a.siz/2+8, 2);
+    a.set(a.siz/2+9, 4);
+    cout << X.siz << ' ' << a.siz << endl;
+    X * a * invrt(10005) / Y;
 }
 
 
