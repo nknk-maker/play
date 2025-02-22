@@ -1,11 +1,14 @@
 #pragma once
+#define NUMBER 1<<8
+
+#ifdef __CUDA_ARCH__
+
 #include <vector>
 #include <iostream>
 #include <assert.h>
-#include <convolve.cu>
+#include <convolve.cpp>
 #include <cuda_runtime.h>
 using namespace std;
-#define NUMBER 1<<15
 
 
 __global__ void kval(int* a, int n) {
@@ -88,14 +91,6 @@ struct BigDecimal {
     }
     void set(int i, int a) {
         kset<<<1, 1>>>(u, i, a, siz);
-    }
-    int comp(const BigDecimal& b) {
-        int *p, *q;
-        cudaMalloc(&p, sizeof(int));
-        cudaMalloc(&q, sizeof(int));
-        *p = -1; *q = 0;
-        kcomp<<<numBlocks, blockSize>>>(u, b.u, p, q);
-        return *q;
     }
     const BigDecimal operator=(const BigDecimal& b) {
         cudaMemcpy(u, b.u, sizeof(int)*siz, cudaMemcpyDeviceToDevice);
@@ -200,3 +195,149 @@ struct BigDecimal {
         return os;
     }
 };
+
+#else
+
+#include <vector>
+#include <iostream>
+#include <assert.h>
+#include <convolve.cpp>
+using namespace std;
+
+struct BigDecimal {
+    int siz;
+    vector<int> v;
+    BigDecimal() {
+        siz = NUMBER;
+        v.assign(siz, 0);
+    }
+    BigDecimal(const int& b) {
+        siz = NUMBER;
+        v.assign(siz, 0);
+        int p = 0, x = b;
+        while (x > 0) {
+            v[p+siz/2] = x%10;
+            x /= 10;
+            p++;
+        }
+    }
+    BigDecimal(const long long& b) {
+        siz = NUMBER;
+        v.assign(siz, 0);
+        int p = 0; long long x = b;
+        while (x > 0) {
+            v[p+siz/2] = x%10;
+            x /= 10;
+            p++;
+        }
+    }
+    BigDecimal(const BigDecimal& b) : siz(b.siz), v(b.v) {}
+    const BigDecimal val() {
+        for (int i = 0; i < siz-1; i++) {
+            int p = v[i] / 10;
+            if (v[i] < 0) p--;
+            v[i+1] += p;
+            v[i] -= p * 10;
+        }
+        return *this;
+    }
+    void set(int i, int a) {
+        v[i] = a;
+    }
+    const BigDecimal operator=(const BigDecimal& b) {
+        v = b.v;
+        return *this;
+    }
+    const BigDecimal operator=(const int& b) {
+        int p = 0, x = b;
+        while (x > 0) {
+            v[p+siz/2] = x%10;
+            x /= 10;
+            p++;
+        }
+        return *this;
+    }
+    const BigDecimal operator=(const long long& b) {
+        int p = 0; long long x = b;
+        while (x > 0) {
+            v[p+siz/2] = x%10;
+            x /= 10;
+            p++;
+        }
+        return *this;
+    }
+    const BigDecimal operator+(const int& b) const {
+        BigDecimal rhs = b;
+        return *this + rhs;
+    }
+    const BigDecimal operator-(const int& b) const {
+        BigDecimal rhs = b;
+        return *this - rhs;
+    }
+    const BigDecimal operator*(const int& b) const {
+        BigDecimal rhs = b;
+        return *this * rhs;
+    }
+    const BigDecimal operator/(const int& b) const {
+        BigDecimal rhs = b;
+        return *this / rhs;
+    }
+    const BigDecimal operator+(const BigDecimal& b) const { 
+        BigDecimal ret = *this;
+        return ret += b;
+    }
+    const BigDecimal operator-(const BigDecimal& b) const { 
+        BigDecimal ret = *this;
+        return ret -= b; 
+    }
+    const BigDecimal operator*(const BigDecimal& b) const { 
+        BigDecimal ret = (*this);
+        return ret *= b; 
+    }
+    const BigDecimal operator/(const BigDecimal& b) const { 
+        BigDecimal ret = *this;
+        return ret /= b; 
+    }
+    const BigDecimal &operator+=(const BigDecimal& b) {
+        for (int i = 0; i < siz; i++) v[i] += b.v[i];
+        val();
+        return (*this);
+    }
+    const BigDecimal &operator-=(const BigDecimal& b) {
+        for (int i = 0; i < siz; i++) v[i] -= b.v[i];
+        val();    
+        return (*this);
+    }
+    const BigDecimal &operator*=(const BigDecimal& b) {
+        assert(siz == b.siz);
+        v = convolve(v, b.v);
+        val();
+        return *this;
+    }
+    const BigDecimal &operator/=(BigDecimal b) {
+        assert(siz == b.siz);
+        BigDecimal x;
+        BigDecimal _2;
+        _2.v[siz/2] = 2;
+        // 初期値を決める
+        int n = siz-1;
+        while (b.v[n] == 0) n--;
+        n = siz - n - 1;
+        x.v[n] = 1;
+        
+        for (int k = 1; k <= siz; k *= 2) {
+            x = x * (_2 - b * x);
+        }
+        *this = (*this) * x;
+        val();
+        return *this;
+    }
+    friend std::ostream& operator<<(std::ostream& os, const BigDecimal& b) {
+        for (int i = b.siz-1; i >= b.siz/2; i--) os << b.v[i];
+        os << '.';
+        for (int i = b.siz/2-1; i >= 0; i--) os << b.v[i];
+        return os;
+    }
+};
+
+#endif

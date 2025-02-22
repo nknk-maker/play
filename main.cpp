@@ -1,4 +1,4 @@
-#include <BigDecimal.cu>
+#include <BigDecimal.cpp>
 #include <iostream>
 using namespace std;
 
@@ -8,7 +8,7 @@ BigDecimal invrt(BigDecimal a) {
     x.set(x.siz/2+1, 1); // 0.01
     _1.set(_1.siz/2-1, 1); // 1
     _5.set(_5.siz/2, 5); // 0.5 = 1/2
-    for (int k = 1; k < x.siz/2; k <<= 1) {
+    for (int k = 1; k <= a.siz; k <<= 1) {
         x = x + _5 * x * (_1 - a * x * x);
     }
     return x;
@@ -33,13 +33,13 @@ void binary_split(BigDecimal* x, BigDecimal *y, BigDecimal *z, int n) {
 
 
 int main() {
-    int n = 1<<10;
+    int n = 1<<1;
     BigDecimal A = 13591409, B = 545140134, C = 640320;
     BigDecimal x[n], y[n], z[n];
     for (int i = 0; i < n; i++) {
-        BigDecimal k = i, kk = i+1;
-        cout << k << endl;
+        BigDecimal k = 2*i, kk = 2*i+1;
         BigDecimal x1 = k*k*k*C*C*C/24, x2 = kk*kk*kk*C*C*C/24, y1 = A+B*k, y2 = A+B*kk, z1 = (k*6+1)*(k*2+1)*(k*6+5), z2 = (kk*6+1)*(kk*2+1)*(kk*6+5);
+        if (i == 0) cout << x1 << ' ' << x2 << endl;
         if (i == 0) x1 = 1;
         if (i == n-1) z2 = 0;
         x[i] = x1*x2;
@@ -48,7 +48,7 @@ int main() {
     }
     binary_split(x, y, z, n);
     BigDecimal a = 4270934400ll;
-    cout << a*x[0]*invrt(10005)/y[0] << endl;
+    cout << a*x[0]/y[0] << endl;
 }
 
 
