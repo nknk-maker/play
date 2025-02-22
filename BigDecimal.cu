@@ -5,7 +5,7 @@
 #include <convolve.cu>
 #include <cuda_runtime.h>
 using namespace std;
-#define NUMBER 1<<3
+#define NUMBER 1<<15
 
 
 __global__ void kval(int* a, int n) {
@@ -42,20 +42,41 @@ __global__ void kset(int* a, int p, int q, int n) {
     a[i+p] = q;
 }
 
-__global__ void kcp(int *a, int *b, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
-    a[i] = b[i];
-}
-
 struct BigDecimal {
     int siz, blockSize, numBlocks;
     int *u;
-    BigDecimal(int n) : siz(n) {
+    BigDecimal() {
+        siz = NUMBER;
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemset(u, 0, sizeof(int)*siz);
         blockSize = 1024;
         numBlocks = (siz + blockSize - 1) / blockSize;
+    }
+    BigDecimal(int b) {
+        siz = NUMBER;
+        cudaMalloc(&u, sizeof(int)*siz);
+        cudaMemset(u, 0, sizeof(int)*siz);
+        blockSize = 1024;
+        numBlocks = (siz + blockSize - 1) / blockSize;
+        int p = 0, x = b;
+        while (x > 0) {
+            set(p+siz/2, x%10);
+            x /= 10;
+            p++;
+        }
+    }
+    BigDecimal(long long b) {
+        siz = NUMBER;
+        cudaMalloc(&u, sizeof(int)*siz);
+        cudaMemset(u, 0, sizeof(int)*siz);
+        blockSize = 1024;
+        numBlocks = (siz + blockSize - 1) / blockSize;
+        int p = 0; long long x = b;
+        while (x > 0) {
+            set(p+siz/2, x%10);
+            x /= 10;
+            p++;
+        }
     }
     BigDecimal(const BigDecimal& b) : siz(b.siz), blockSize(b.blockSize), numBlocks(b.numBlocks) {
         cudaMalloc(&u, sizeof(int)*siz);
@@ -77,7 +98,7 @@ struct BigDecimal {
         return *q;
     }
     const BigDecimal operator=(const BigDecimal& b) {
-        kcp<<<numBlocks, blockSize>>>(u, b.u, siz);
+        cudaMemcpy(u, b.u, sizeof(int)*siz, cudaMemcpyDeviceToDevice);
         return *this;
     }
     const BigDecimal operator=(const int& b) {
@@ -88,6 +109,17 @@ struct BigDecimal {
             x /= 10;
             p++;
         }
+        return *this;
+    }
+    const BigDecimal operator=(const long long& b) {
+        int p = 0; long long x = b;
+        cudaMemset(u, 0, sizeof(int)*siz);
+        while (x > 0) {
+            set(p+siz/2, x%10);
+            x /= 10;
+            p++;
+        }
+        return *this;
     }
     const BigDecimal operator+(const int& b) const {
         BigDecimal rhs = b;
@@ -99,7 +131,7 @@ struct BigDecimal {
     }
     const BigDecimal operator*(const int& b) const {
         BigDecimal rhs = b;
-        return *this * b;
+        return *this * rhs;
     }
     const BigDecimal operator/(const int& b) const {
         BigDecimal rhs = b;

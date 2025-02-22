@@ -2,10 +2,6 @@
 #include <iostream>
 using namespace std;
 
-#define  A  13591409
-#define  B  545140134
-#define  C  640320
-
 // 1/sqrt(100005)
 BigDecimal invrt(BigDecimal a) {
     BigDecimal x(a.siz), _1(a.siz), _5(a.siz);
@@ -18,99 +14,41 @@ BigDecimal invrt(BigDecimal a) {
     return x;
 }
 
-// binary split
-__global__ void ksplit(BigDecimal* x, BigDecimal* y, BigDecimal* z, int siz, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int l = 1<<siz;
-    int hl = l>>1;
-    int pos = i*l;
-    if (pos + hl >= n) return;
-    BigDecimal nx = x[pos] * x[pos+hl];
-    BigDecimal ny = x[pos+hl] * y[pos] + y[pos+hl] * z[pos];
-    BigDecimal nz = z[pos] * z[pos+hl];
-    x[pos] = nx;
-    y[pos] = ny;
-    z[pos] = nz;
-}
-
 void binary_split(BigDecimal* x, BigDecimal *y, BigDecimal *z, int n) {
     for (int i = 1; (1<<i) <= n; i++) {
         int blockSize = 32;
         int numBlocks = (n>>i + blockSize - 1) / blockSize;
-        ksplit<<<numBlocks, blockSize>>>(x, y, z, i, n);
+        for (int j = 0; j < n; j += (1<<i)) {
+            int k = i>>1;
+            BigDecimal nx = x[j] * x[j+k];
+            BigDecimal ny = x[j+k] * y[j] + y[j+k] * z[j];
+            BigDecimal nz = z[j] * z[j+k];
+            x[j] = nx;
+            y[j] = ny;
+            z[j] = nz;
+        }
     }
 }
 
-__device__ BigDecimal dx(int i) {
-    BigDecimal k = i, c = C;
-    if (i == 0) {
-        BigDecimal ret = 0;
-        return ret;
-    }
-    return k*k*k*c*c*c/24;
-}
-
-__device__ BigDecimal dy(int i) {
-    BigDecimal k = i;
-    return k*B + A;
-}
-
-__device__ BigDecimal dz(int i, int n) {
-    BigDecimal k = i;
-    if (i == n-1) {
-        BigDecimal ret = 0;
-        return ret;
-    }
-    return (k*6+1)*(k*2+1)*(k*6+5);
-}
-
-__global__ void kx(BigDecimal *x, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
-    x[i] = dx(2*i)+dx(2*i+1);
-}
-
-__global__ void ky(BigDecimal *y, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
-    y[i] = dx(2*i+1)*dy(2*i) + dy(2*i+1)*dz(2*i, 2*n);
-}
-
-__global__ void kz(BigDecimal *z, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
-    z[i] = dz(2*i, 2*n)*dz(2*i+1, 2*n);
-}
 
 
 int main() {
-    BigDecimal p = 10;
-    cout << p << endl;
-    int n = 1<<8;
-    BigDecimal *x, *y, *z;
-    cudaMalloc(&x, sizeof(BigDecimal)*n);
-    cudaMalloc(&y, sizeof(BigDecimal)*n);
-    cudaMalloc(&z, sizeof(BigDecimal)*n);
-    int blockSize = 32;
-    int numBlocks = (n + blockSize - 1) / blockSize;
-    kx<<<numBlocks, blockSize>>>(x, n);
-    ky<<<numBlocks, blockSize>>>(y, n);
-    kz<<<numBlocks, blockSize>>>(z, n);
+    int n = 1<<10;
+    BigDecimal A = 13591409, B = 545140134, C = 640320;
+    BigDecimal x[n], y[n], z[n];
+    for (int i = 0; i < n; i++) {
+        BigDecimal k = i, kk = i+1;
+        cout << k << endl;
+        BigDecimal x1 = k*k*k*C*C*C/24, x2 = kk*kk*kk*C*C*C/24, y1 = A+B*k, y2 = A+B*kk, z1 = (k*6+1)*(k*2+1)*(k*6+5), z2 = (kk*6+1)*(kk*2+1)*(kk*6+5);
+        if (i == 0) x1 = 1;
+        if (i == n-1) z2 = 0;
+        x[i] = x1*x2;
+        y[i] = x2*y1+y2*z1;
+        z[i] = z1*z2;
+    }
     binary_split(x, y, z, n);
-    BigDecimal X, Y;
-    cout << X.siz << endl;
-    cudaMemcpy(&X, x, sizeof(BigDecimal), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&Y, y, sizeof(BigDecimal), cudaMemcpyDeviceToHost);
-    BigDecimal a;
-    a.set(a.siz/2+2, 4);
-    a.set(a.siz/2+3, 4);
-    a.set(a.siz/2+4, 3);
-    a.set(a.siz/2+5, 9);
-    a.set(a.siz/2+7, 7);
-    a.set(a.siz/2+8, 2);
-    a.set(a.siz/2+9, 4);
-    cout << X.siz << ' ' << a.siz << endl;
-    X * a * invrt(10005) / Y;
+    BigDecimal a = 4270934400ll;
+    cout << a*x[0]*invrt(10005)/y[0] << endl;
 }
 
 
