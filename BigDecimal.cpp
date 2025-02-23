@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int NUMBER = 1<<8;
+constexpr int NUMBER = 1<<9;
 constexpr int blockSize = 1024;
 constexpr int numBlocks = (NUMBER+ blockSize - 1) / blockSize;
 
@@ -176,9 +176,10 @@ struct BigDecimal {
     friend std::ostream& operator<<(std::ostream& os, const BigDecimal& b) {
         vector<int> v(b.siz);
         cudaMemcpy(v.data(), b.u, sizeof(int)*b.siz, cudaMemcpyDeviceToHost);
-        for (int i = b.siz-1; i >= b.siz/2; i--) os << v[i];
+        while (v[i] == 0) i--;
+        for (;i >= b.siz/2; i--) os << v[i];
         os << '.';
-        for (int i = b.siz/2-1; i >= 0; i--) os << v[i];
+        for (;i >= 0; i--) os << v[i];
         return os;
     }
 };
@@ -234,6 +235,7 @@ struct BigDecimal {
     }
     const BigDecimal operator=(const int& b) {
         int p = 0, x = b;
+        v.assign(siz, 0);
         while (x > 0) {
             v[p+siz/2] = x%10;
             x /= 10;
@@ -243,6 +245,7 @@ struct BigDecimal {
     }
     const BigDecimal operator=(const long long& b) {
         int p = 0; long long x = b;
+        v.assign(siz, 0);
         while (x > 0) {
             v[p+siz/2] = x%10;
             x /= 10;
@@ -317,9 +320,11 @@ struct BigDecimal {
         return *this;
     }
     friend std::ostream& operator<<(std::ostream& os, const BigDecimal& b) {
-        for (int i = b.siz-1; i >= b.siz/2; i--) os << b.v[i];
+        int i = b.siz-1;
+        while (b.v[i] == 0) i--;
+        for (;i >= b.siz/2; i--) os << b.v[i];
         os << '.';
-        for (int i = b.siz/2-1; i >= 0; i--) os << b.v[i];
+        for (;i >= 0; i--) os << b.v[i];
         return os;
     }
 };

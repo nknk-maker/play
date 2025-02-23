@@ -20,11 +20,8 @@ BigDecimal invrt(BigDecimal a) {
 // binary splitting method
 void binary_split(BigDecimal* x, BigDecimal *y, BigDecimal *z, int n) {
     for (int i = 1; (1<<i) <= n; i++) {
-        int blockSize = 32;
-        int numBlocks = (n>>i + blockSize - 1) / blockSize;
         for (int j = 0; j < n; j += (1<<i)) {
-            cout << i << ' ' << j << endl;
-            int k = i>>1;
+            int k = 1<<(i-1);
             BigDecimal nx = x[j] * x[j+k];
             BigDecimal ny = x[j+k] * y[j] + y[j+k] * z[j];
             BigDecimal nz = z[j] * z[j+k];
@@ -38,7 +35,7 @@ void binary_split(BigDecimal* x, BigDecimal *y, BigDecimal *z, int n) {
 
 
 int main() {
-    int n = 1<<0;
+    int n = 1<<2;
     BigDecimal A = 13591409, B = 545140134, C = 640320;
     BigDecimal x[n], y[n], z[n];
     for (int i = 0; i < n; i++) {
@@ -47,11 +44,12 @@ int main() {
         if (i == 0) x1 = 1;
         if (i == n-1) z2 = 0;
         x[i] = x1*x2;
-        y[i] = x2*y1+y2*z1;
+        y[i] = x2*y1-y2*z1;
         z[i] = z1*z2;
     }
     binary_split(x, y, z, n);
     BigDecimal a = 4270934400ll;
+
     cout << a*x[0]*invrt(10005)/y[0] << endl;
 }
 
