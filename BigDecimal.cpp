@@ -1,5 +1,8 @@
 #pragma once
-#define NUMBER 1<<8
+
+constexpr int NUMBER = 1<<8;
+constexpr int blockSize = 1024;
+constexpr int numBlocks = (NUMBER+ blockSize - 1) / blockSize;
 
 #ifdef __CUDA_ARCH__
 
@@ -9,7 +12,6 @@
 #include <convolve.cpp>
 #include <cuda_runtime.h>
 using namespace std;
-
 
 __global__ void kval(int* a, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -32,13 +34,6 @@ __global__ void ksub(int* a, int* b, int n) {
     a[i] -= b[i];
 }
 
-__global__ void kcomp(int* a, int* b, int* p, int* q) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (*p > i && *q != 0) return;
-    if (a[i] > b[i]) *p = i, *q = 1;
-    if (a[i] < b[i]) *p = i, *q = -1;
-}
-
 __global__ void kset(int* a, int p, int q, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i+p >= n) return;
@@ -46,42 +41,34 @@ __global__ void kset(int* a, int p, int q, int n) {
 }
 
 struct BigDecimal {
-    int siz, blockSize, numBlocks;
-    int *u;
+    int siz = NUMBER,*u;
     BigDecimal() {
-        siz = NUMBER;
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemset(u, 0, sizeof(int)*siz);
-        blockSize = 1024;
-        numBlocks = (siz + blockSize - 1) / blockSize;
     }
-    BigDecimal(int b) {
-        siz = NUMBER;
+    BigDecimal(const int& b) {
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemset(u, 0, sizeof(int)*siz);
-        blockSize = 1024;
-        numBlocks = (siz + blockSize - 1) / blockSize;
         int p = 0, x = b;
+        vector<int> v(siz);
         while (x > 0) {
             set(p+siz/2, x%10);
             x /= 10;
             p++;
         }
     }
-    BigDecimal(long long b) {
-        siz = NUMBER;
+    BigDecimal(const long long& b) {
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemset(u, 0, sizeof(int)*siz);
-        blockSize = 1024;
-        numBlocks = (siz + blockSize - 1) / blockSize;
         int p = 0; long long x = b;
+        vector<int> v(siz);
         while (x > 0) {
             set(p+siz/2, x%10);
             x /= 10;
             p++;
         }
     }
-    BigDecimal(const BigDecimal& b) : siz(b.siz), blockSize(b.blockSize), numBlocks(b.numBlocks) {
+    BigDecimal(const BigDecimal& b) : siz(b.siz) {
         cudaMalloc(&u, sizeof(int)*siz);
         cudaMemcpy(u, b.u, sizeof(int)*siz, cudaMemcpyDeviceToDevice);
     }
@@ -99,6 +86,7 @@ struct BigDecimal {
     const BigDecimal operator=(const int& b) {
         int p = 0, x = b;
         cudaMemset(u, 0, sizeof(int)*siz);
+        vector<int> v(siz);
         while (x > 0) {
             set(p+siz/2, x%10);
             x /= 10;
@@ -109,6 +97,7 @@ struct BigDecimal {
     const BigDecimal operator=(const long long& b) {
         int p = 0; long long x = b;
         cudaMemset(u, 0, sizeof(int)*siz);
+        vector<int> v(siz);
         while (x > 0) {
             set(p+siz/2, x%10);
             x /= 10;
@@ -168,18 +157,16 @@ struct BigDecimal {
     }
     const BigDecimal &operator/=(BigDecimal b) {
         assert(siz == b.siz);
-        BigDecimal x(siz);
+        BigDecimal x, _2;
         // 初期値を決める
         int n = siz-1;
-        int v[siz];
-        cudaMemcpy(v, b.u, sizeof(int)*siz, cudaMemcpyDeviceToHost);
+        vector<int> v(siz);
+        cudaMemcpy(v.data(), b.u, sizeof(int)*siz, cudaMemcpyDeviceToHost);
         while (v[n] == 0) n--;
         n = siz - n - 1;
 
         x.set(n, 1); // 0.1
         for (int k = 1; k < siz/2; k *= 2) {
-            BigDecimal _2(siz);
-            _2.set(siz/2, 2);
             x = x * (_2 - b * x);
         }
         *this = (*this) * x;
@@ -205,14 +192,12 @@ struct BigDecimal {
 using namespace std;
 
 struct BigDecimal {
-    int siz;
+    int siz = NUMBER;
     vector<int> v;
     BigDecimal() {
-        siz = NUMBER;
         v.assign(siz, 0);
     }
     BigDecimal(const int& b) {
-        siz = NUMBER;
         v.assign(siz, 0);
         int p = 0, x = b;
         while (x > 0) {
@@ -222,7 +207,6 @@ struct BigDecimal {
         }
     }
     BigDecimal(const long long& b) {
-        siz = NUMBER;
         v.assign(siz, 0);
         int p = 0; long long x = b;
         while (x > 0) {
