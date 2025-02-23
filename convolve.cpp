@@ -109,7 +109,7 @@ int* convolve(int* f_, int* g_, int siz) {
 #include <cstdint>
 
 using namespace std;
-using REAL = complex<double>;
+using REAL = complex<float>;
 
 vector<REAL> fft(vector<REAL> v, int n) {
     if (n == 1) return v;

@@ -35,7 +35,7 @@ void binary_split(BigDecimal* x, BigDecimal *y, BigDecimal *z, int n) {
 
 
 int main() {
-    int n = 1<<2;
+    int n = 1<<5;
     BigDecimal A = 13591409, B = 545140134, C = 640320;
     BigDecimal x[n], y[n], z[n];
     for (int i = 0; i < n; i++) {

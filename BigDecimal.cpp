@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int NUMBER = 1<<9;
+constexpr int NUMBER = 1<<15;
 constexpr int blockSize = 1024;
 constexpr int numBlocks = (NUMBER+ blockSize - 1) / blockSize;
 
