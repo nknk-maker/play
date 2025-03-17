@@ -1,0 +1,42 @@
+{
+    "configurations": [
+        // {
+        //     // windows(quda)
+        //     "name": "Win32",
+        //     "includePath": [
+        //         "${workspaceFolder}/**",
+        //         "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
+        //     ],
+        //     "defines": [],
+        //     "compilerPath": "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\bin\\nvcc.exe",
+        //     "cStandard": "c17",
+        //     "cppStandard": "gnu++17",
+        //     "intelliSenseMode": "windows-gcc-x64"
+        // },
+        {
+            // windows(g++)
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "C:\\Program Files\\mingw64\\bin\\g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/local/cuda-12/include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/local/cuda/bin/nvcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
