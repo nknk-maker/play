@@ -12,13 +12,13 @@ struct PQT {
 };
 
 dcm chudnovsky_bs(int digits) {
-    auto bs = [&](auto f, long long a, long long b)->PQT {
-        dcm Pab, Qab, Tab;
+    auto bs = [&](auto f, int a, int b)->PQT {
+        dcm Pab, Qab, Tab, aa = a;
             if (b - a == 1) {
             if (a == 0) Pab = Qab = 1;
             else {
-                Pab = (6*a-5)*(2*a-1)*(6*a-1);
-                Qab = a*a*a*C3_OVER24;
+                Pab = (6*aa-5)*(2*aa-1)*(6*aa-1);
+                Qab = aa*aa*aa*C3_OVER24;
             }
             Tab = Pab * (13591409LL + 545140134LL*a);
             if (a & 1) Tab.sgn = true;
@@ -47,6 +47,6 @@ int main() {
     ofstream file("pi_out.txt");
     file << chudnovsky_bs(10000000) << endl;
     auto end = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<::chrono::milliseconds>(end - start);
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
     cout << "実行時間: " << duration.count() << " ms" << endl;
 }
